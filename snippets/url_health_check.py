@@ -29,6 +29,7 @@ def check_url(url: str, timeout: int = 5) -> dict:
     if not url.startswith(('http://', 'https://')):
         url = f"https://{url}"
 
+    result["url_checked"] = url  # Return normalized URL
     headers = {"User-Agent": "Mozilla/5.0 (compatible; ProspectValidator/1.0)"}
 
     try:

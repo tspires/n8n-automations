@@ -8,7 +8,7 @@ Output: Adds 'emails', 'phones', 'social_links', 'has_contact_page', 'contactabi
 """
 
 import re
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 import requests
 
@@ -121,10 +121,11 @@ def find_contact_page(base_url: str, content: str) -> str:
             return urljoin(base_url, match)
 
     # Try common contact page paths
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; ProspectValidator/1.0)"}
     for pattern in CONTACT_PAGE_PATTERNS:
         try:
             test_url = urljoin(base_url, pattern)
-            response = requests.head(test_url, timeout=3, allow_redirects=True)
+            response = requests.head(test_url, timeout=3, allow_redirects=True, headers=headers)
             if response.status_code == 200:
                 return test_url
         except Exception:

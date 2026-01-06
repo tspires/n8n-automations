@@ -9,7 +9,7 @@ Output: Adds 'seo_score', 'seo_passed', 'seo_issues', 'seo_signals'
 
 import re
 import time
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import requests
 
@@ -137,8 +137,10 @@ def check_seo(url: str) -> dict:
         else:
             result["seo_issues"].append("Missing meta description")
 
-        # H1 tags
-        h1_matches = re.findall(r'<h1[^>]*>([^<]+)</h1>', content, re.IGNORECASE)
+        # H1 tags (handle nested elements)
+        h1_matches = re.findall(r'<h1[^>]*>(.*?)</h1>', content, re.IGNORECASE | re.DOTALL)
+        h1_matches = [re.sub(r'<[^>]+>', '', h).strip() for h in h1_matches]  # Strip inner tags
+        h1_matches = [h for h in h1_matches if h]  # Remove empty
         result["seo_meta"]["h1_count"] = len(h1_matches)
         if h1_matches:
             result["seo_signals"]["has_h1"] = True

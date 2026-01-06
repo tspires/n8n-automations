@@ -1,6 +1,17 @@
 {
   "snippets": [
     {
+      "id": "prospect_validator",
+      "name": "Prospect Validator (All-in-One)",
+      "description": "Combines all validation checks into a single efficient pass: URL health, legitimacy, SEO, contactability, and maturity",
+      "file": "prospect_validator.py",
+      "input_fields": ["url", "website", "company_url", "domain"],
+      "output_fields": ["overall_score", "overall_passed", "issues", "url_valid", "is_real_business", "seo_score", "contactability_score", "maturity_score", "emails", "phones", "social_links", "tech_stack"],
+      "pass_field": "overall_passed",
+      "order": 0,
+      "recommended": true
+    },
+    {
       "id": "url_health_check",
       "name": "URL Health Check",
       "description": "Quick validation to filter out low-quality company prospects by checking if their website is accessible",

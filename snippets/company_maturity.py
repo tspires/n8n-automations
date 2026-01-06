@@ -10,7 +10,7 @@ Output: Adds 'domain_age_days', 'has_mx_records', 'tech_signals', 'ssl_info'
 import re
 import socket
 import ssl
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import requests
@@ -93,7 +93,7 @@ def get_ssl_info(domain: str) -> dict:
                 expiry_str = cert.get('notAfter')
                 if expiry_str:
                     expiry = datetime.strptime(expiry_str, '%b %d %H:%M:%S %Y %Z')
-                    days_until_expiry = (expiry - datetime.utcnow()).days
+                    days_until_expiry = (expiry.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).days
                     ssl_info["ssl_expiry_days"] = days_until_expiry
 
     except Exception:
@@ -177,7 +177,9 @@ def check_maturity(url: str) -> dict:
         if isinstance(creation_date, list):
             creation_date = creation_date[0]
         if creation_date:
-            age_days = (datetime.now() - creation_date).days
+            if creation_date.tzinfo is None:
+                creation_date = creation_date.replace(tzinfo=timezone.utc)
+            age_days = (datetime.now(timezone.utc) - creation_date).days
             result["domain_age_days"] = age_days
     except Exception:
         pass
