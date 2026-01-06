@@ -1,12 +1,17 @@
 {
+  "schema_version": "2.0",
+  "output_schema": {
+    "pattern": "{check}_passed, {check}_score, {check}_issues, {check}_data",
+    "description": "All snippets follow consistent naming: passed (bool), score (0-100), issues (string[]), data (object)"
+  },
   "snippets": [
     {
       "id": "prospect_validator",
       "name": "Prospect Validator (All-in-One)",
-      "description": "Combines all validation checks into a single efficient pass: URL health, legitimacy, SEO, contactability, and maturity",
+      "description": "Combines all checks in single pass. Outputs health, legitimacy, seo, contactability, maturity + overall.",
       "file": "prospect_validator.py",
       "input_fields": ["url", "website", "company_url", "domain"],
-      "output_fields": ["overall_score", "overall_passed", "issues", "url_valid", "is_real_business", "seo_score", "contactability_score", "maturity_score", "emails", "phones", "social_links", "tech_stack"],
+      "output_fields": ["overall_passed", "overall_score", "health_*", "legitimacy_*", "seo_*", "contactability_*", "maturity_*"],
       "pass_field": "overall_passed",
       "order": 0,
       "recommended": true
@@ -14,50 +19,50 @@
     {
       "id": "url_health_check",
       "name": "URL Health Check",
-      "description": "Quick validation to filter out low-quality company prospects by checking if their website is accessible",
+      "description": "Quick check if website is accessible and responsive",
       "file": "url_health_check.py",
       "input_fields": ["url", "website", "company_url", "domain"],
-      "output_fields": ["url_valid", "url_status_code", "url_error", "url_checked"],
-      "pass_field": "url_valid",
+      "output_fields": ["health_passed", "health_score", "health_issues", "health_data"],
+      "pass_field": "health_passed",
       "order": 1
     },
     {
       "id": "business_legitimacy",
       "name": "Business Legitimacy Check",
-      "description": "Detects parked domains, placeholder pages, under construction sites, and other low-quality indicators",
+      "description": "Detects parked domains, placeholder pages, under construction sites",
       "file": "business_legitimacy.py",
       "input_fields": ["url", "url_checked", "website", "domain"],
-      "output_fields": ["is_real_business", "legitimacy_score", "red_flags", "content_length", "word_count"],
-      "pass_field": "is_real_business",
+      "output_fields": ["legitimacy_passed", "legitimacy_score", "legitimacy_issues", "legitimacy_data"],
+      "pass_field": "legitimacy_passed",
       "order": 2
     },
     {
       "id": "company_maturity",
       "name": "Company Maturity Check",
-      "description": "Analyzes domain age, DNS/MX records, SSL certificates, and technology stack for maturity signals",
+      "description": "Analyzes domain age, SSL, MX records, and technology stack",
       "file": "company_maturity.py",
       "input_fields": ["url", "url_checked", "website", "domain"],
-      "output_fields": ["domain_age_days", "has_mx_records", "tech_stack", "has_ssl", "ssl_issuer", "ssl_expiry_days", "maturity_score", "maturity_passed"],
+      "output_fields": ["maturity_passed", "maturity_score", "maturity_issues", "maturity_data"],
       "pass_field": "maturity_passed",
       "order": 3
     },
     {
       "id": "contactability",
       "name": "Contactability Check",
-      "description": "Extracts emails, phone numbers, social media links, and contact page presence",
+      "description": "Extracts emails, phone numbers, and social media links",
       "file": "contactability.py",
       "input_fields": ["url", "url_checked", "website", "domain"],
-      "output_fields": ["emails", "phones", "social_links", "contact_page_url", "has_contact_page", "contactability_score", "contactability_passed"],
+      "output_fields": ["contactability_passed", "contactability_score", "contactability_issues", "contactability_data"],
       "pass_field": "contactability_passed",
       "order": 4
     },
     {
       "id": "site_seo_check",
       "name": "Site SEO Check",
-      "description": "Analyzes on-page SEO factors, meta tags, performance, and crawlability signals",
+      "description": "Analyzes on-page SEO factors and performance",
       "file": "site_seo_check.py",
       "input_fields": ["url", "url_checked", "website", "domain"],
-      "output_fields": ["seo_score", "seo_passed", "seo_issues", "seo_signals", "seo_meta", "seo_performance"],
+      "output_fields": ["seo_passed", "seo_score", "seo_issues", "seo_data"],
       "pass_field": "seo_passed",
       "order": 5
     }

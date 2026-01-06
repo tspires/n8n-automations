@@ -4,7 +4,7 @@ n8n Python Code Node: Contactability Check
 Extracts contact information and social presence from company websites.
 
 Input: Expects items with 'url' field (or url_checked from previous step)
-Output: Adds 'emails', 'phones', 'social_links', 'has_contact_page', 'contactability_score'
+Output: contactability_passed, contactability_score, contactability_issues, contactability_data
 """
 
 import re
@@ -13,214 +13,149 @@ from urllib.parse import urljoin
 import requests
 
 REQUEST_TIMEOUT = 10
+USER_AGENT = "Mozilla/5.0 (compatible; ProspectValidator/1.0)"
 
-# Email pattern - captures most valid email formats
 EMAIL_PATTERN = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+PHONE_PATTERN = r'\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}'
 
-# Phone patterns (US/International)
-PHONE_PATTERNS = [
-    r'\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}',  # US
-    r'\+[0-9]{1,3}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,4}[-.\s]?[0-9]{1,9}',  # International
-]
-
-# Social media patterns
 SOCIAL_PATTERNS = {
-    "linkedin": r'linkedin\.com/(company|in)/[a-zA-Z0-9_-]+',
-    "twitter": r'(twitter\.com|x\.com)/[a-zA-Z0-9_]+',
-    "facebook": r'facebook\.com/[a-zA-Z0-9.]+',
-    "instagram": r'instagram\.com/[a-zA-Z0-9_.]+',
-    "youtube": r'youtube\.com/(channel|c|user|@)[a-zA-Z0-9_-]+',
-    "github": r'github\.com/[a-zA-Z0-9_-]+',
+    "linkedin": r'linkedin\.com/(company|in)/[\w-]+',
+    "twitter": r'(twitter\.com|x\.com)/\w+',
+    "facebook": r'facebook\.com/[\w.]+',
+    "instagram": r'instagram\.com/[\w_.]+',
+    "youtube": r'youtube\.com/(channel|c|user|@)[\w-]+',
+    "github": r'github\.com/[\w-]+',
 }
 
-# Contact page URL patterns
-CONTACT_PAGE_PATTERNS = [
-    r'/contact',
-    r'/about',
-    r'/get-in-touch',
-    r'/reach-us',
-    r'/connect',
+CONTACT_PATHS = ['/contact', '/about', '/get-in-touch', '/reach-us']
+
+INVALID_EMAIL_DOMAINS = [
+    'example.com', 'email.com', 'domain.com', 'sentry.io',
+    'wixpress.com', 'squarespace.com', 'wordpress.com', 'schema.org',
 ]
-
-# Email addresses to filter out (generic/invalid)
-INVALID_EMAIL_PATTERNS = [
-    r'example\.com',
-    r'email\.com',
-    r'domain\.com',
-    r'yourcompany',
-    r'sentry\.io',
-    r'wixpress\.com',
-    r'squarespace',
-    r'wordpress',
-    r'schema\.org',
-]
-
-
-def is_valid_email(email: str) -> bool:
-    """Filter out invalid/placeholder emails."""
-    email_lower = email.lower()
-    for pattern in INVALID_EMAIL_PATTERNS:
-        if re.search(pattern, email_lower):
-            return False
-    return True
 
 
 def extract_emails(content: str) -> list:
-    """Extract valid email addresses from content."""
+    """Extract valid email addresses."""
     emails = re.findall(EMAIL_PATTERN, content)
-    # Dedupe and filter
-    valid_emails = list(set(e.lower() for e in emails if is_valid_email(e)))
-    return valid_emails[:10]  # Limit to prevent huge lists
+    valid = [e.lower() for e in emails if not any(d in e.lower() for d in INVALID_EMAIL_DOMAINS)]
+    return list(set(valid))[:10]
 
 
 def extract_phones(content: str) -> list:
-    """Extract phone numbers from content."""
-    phones = []
-    for pattern in PHONE_PATTERNS:
-        matches = re.findall(pattern, content)
-        phones.extend(matches)
-
-    # Clean and dedupe
-    cleaned = []
-    for phone in phones:
-        # Remove non-digit except leading +
-        clean = re.sub(r'[^\d+]', '', phone)
-        if len(clean) >= 10:  # Valid phone length
-            cleaned.append(phone.strip())
-
+    """Extract phone numbers."""
+    phones = re.findall(PHONE_PATTERN, content)
+    cleaned = [p.strip() for p in phones if len(re.sub(r'[^\d]', '', p)) >= 10]
     return list(set(cleaned))[:5]
 
 
-def extract_social_links(content: str) -> dict:
-    """Extract social media profile links."""
+def extract_social(content: str) -> dict:
+    """Extract social media links."""
     social = {}
     for platform, pattern in SOCIAL_PATTERNS.items():
-        matches = re.findall(pattern, content, re.IGNORECASE)
-        if matches:
-            # Get the full URL match
-            full_pattern = r'https?://(www\.)?' + pattern
-            full_matches = re.findall(full_pattern, content, re.IGNORECASE)
-            if full_matches:
-                social[platform] = f"https://{platform}.com/{matches[0]}" if platform != "twitter" else f"https://x.com/{matches[0]}"
-            else:
-                social[platform] = True  # Found but couldn't extract full URL
-
+        match = re.search(r'https?://(?:www\.)?' + pattern, content, re.IGNORECASE)
+        if match:
+            social[platform] = match.group(0)
     return social
 
 
 def find_contact_page(base_url: str, content: str) -> str:
-    """Try to find a contact page URL."""
-    # Look for contact links in the page
-    link_pattern = r'href=["\']([^"\']*(?:contact|about|get-in-touch)[^"\']*)["\']'
-    matches = re.findall(link_pattern, content, re.IGNORECASE)
+    """Find contact page URL."""
+    # Look for contact links
+    link_match = re.search(r'href=["\']([^"\']*contact[^"\']*)["\']', content, re.IGNORECASE)
+    if link_match:
+        href = link_match.group(1)
+        if href.startswith('http'):
+            return href
+        return urljoin(base_url, href)
 
-    for match in matches:
-        if match.startswith('http'):
-            return match
-        elif match.startswith('/'):
-            return urljoin(base_url, match)
-
-    # Try common contact page paths
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; ProspectValidator/1.0)"}
-    for pattern in CONTACT_PAGE_PATTERNS:
+    # Try common paths
+    headers = {"User-Agent": USER_AGENT}
+    for path in CONTACT_PATHS:
         try:
-            test_url = urljoin(base_url, pattern)
-            response = requests.head(test_url, timeout=3, allow_redirects=True, headers=headers)
-            if response.status_code == 200:
-                return test_url
+            url = urljoin(base_url, path)
+            resp = requests.head(url, timeout=3, allow_redirects=True, headers=headers)
+            if resp.status_code == 200:
+                return url
         except Exception:
             pass
-
     return None
 
 
 def check_contactability(url: str) -> dict:
     """Extract contact information from a website."""
     result = {
-        "emails": [],
-        "phones": [],
-        "social_links": {},
-        "contact_page_url": None,
-        "has_contact_page": False,
-        "contactability_score": 0,
         "contactability_passed": False,
+        "contactability_score": 0,
+        "contactability_issues": [],
+        "contactability_data": {
+            "emails": [],
+            "phones": [],
+            "social_links": {},
+            "contact_page_url": None,
+            "has_contact_page": False,
+        },
     }
 
     if not url:
+        result["contactability_issues"].append("No URL provided")
         return result
 
-    # Normalize URL
     if not url.startswith(('http://', 'https://')):
         url = f"https://{url}"
 
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; ProspectValidator/1.0)"}
+    headers = {"User-Agent": USER_AGENT}
 
     try:
         response = requests.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True, headers=headers)
         content = response.text
+        data = result["contactability_data"]
 
         # Extract from main page
-        result["emails"] = extract_emails(content)
-        result["phones"] = extract_phones(content)
-        result["social_links"] = extract_social_links(content)
+        data["emails"] = extract_emails(content)
+        data["phones"] = extract_phones(content)
+        data["social_links"] = extract_social(content)
 
-        # Try to find and scrape contact page
+        # Find and scrape contact page
         contact_page = find_contact_page(url, content)
         if contact_page:
-            result["contact_page_url"] = contact_page
-            result["has_contact_page"] = True
+            data["contact_page_url"] = contact_page
+            data["has_contact_page"] = True
 
-            # Scrape contact page for more info
             try:
-                contact_response = requests.get(contact_page, timeout=REQUEST_TIMEOUT, headers=headers)
-                contact_content = contact_response.text
-
-                # Merge findings
-                result["emails"] = list(set(result["emails"] + extract_emails(contact_content)))[:10]
-                result["phones"] = list(set(result["phones"] + extract_phones(contact_content)))[:5]
-
-                # Merge social links
-                new_social = extract_social_links(contact_content)
-                result["social_links"].update(new_social)
-
+                contact_resp = requests.get(contact_page, timeout=REQUEST_TIMEOUT, headers=headers)
+                contact_content = contact_resp.text
+                data["emails"] = list(set(data["emails"] + extract_emails(contact_content)))[:10]
+                data["phones"] = list(set(data["phones"] + extract_phones(contact_content)))[:5]
+                data["social_links"].update(extract_social(contact_content))
             except Exception:
                 pass
 
-    except requests.exceptions.Timeout:
-        pass
-    except requests.exceptions.ConnectionError:
-        pass
-    except Exception:
-        pass
-
-    # Calculate contactability score (0-100)
-    score = 0
-
-    # Email is most valuable
-    if result["emails"]:
-        score += 30
-        if len(result["emails"]) > 1:
+        # Calculate score
+        score = 0
+        if data["emails"]:
+            score += 35
+        if data["phones"]:
+            score += 25
+        if data["social_links"]:
+            score += min(20, len(data["social_links"]) * 5)
+        if "linkedin" in data["social_links"]:
+            score += 10
+        if data["has_contact_page"]:
             score += 10
 
-    # Phone adds credibility
-    if result["phones"]:
-        score += 20
+        result["contactability_score"] = min(100, score)
+        result["contactability_passed"] = bool(data["emails"]) or bool(data["phones"])
 
-    # Contact page shows professionalism
-    if result["has_contact_page"]:
-        score += 15
+        if not result["contactability_passed"]:
+            result["contactability_issues"].append("No email or phone found")
 
-    # Social presence
-    social_count = len(result["social_links"])
-    if social_count > 0:
-        score += min(25, social_count * 5)
-
-    # LinkedIn is especially valuable for B2B
-    if "linkedin" in result["social_links"]:
-        score += 10
-
-    result["contactability_score"] = min(100, score)
-    result["contactability_passed"] = bool(result["emails"]) or bool(result["phones"])
+    except requests.exceptions.Timeout:
+        result["contactability_issues"].append("Timeout")
+    except requests.exceptions.ConnectionError:
+        result["contactability_issues"].append("Connection Failed")
+    except Exception as e:
+        result["contactability_issues"].append(f"Error: {str(e)[:50]}")
 
     return result
 
@@ -230,7 +165,6 @@ output = []
 
 for item in _input.all():
     data = item.json
-
     url = data.get("url_checked") or data.get("url") or data.get("website") or data.get("domain")
 
     check_result = check_contactability(url)
