@@ -6,7 +6,35 @@
       "description": "Quick validation to filter out low-quality company prospects by checking if their website is accessible",
       "file": "url_health_check.py",
       "input_fields": ["url", "website", "company_url", "domain"],
-      "output_fields": ["url_valid", "url_status_code", "url_error", "url_checked"]
+      "output_fields": ["url_valid", "url_status_code", "url_error", "url_checked"],
+      "order": 1
+    },
+    {
+      "id": "business_legitimacy",
+      "name": "Business Legitimacy Check",
+      "description": "Detects parked domains, placeholder pages, under construction sites, and other low-quality indicators",
+      "file": "business_legitimacy.py",
+      "input_fields": ["url", "url_checked", "website", "domain"],
+      "output_fields": ["is_real_business", "legitimacy_score", "red_flags", "content_length", "word_count"],
+      "order": 2
+    },
+    {
+      "id": "company_maturity",
+      "name": "Company Maturity Check",
+      "description": "Analyzes domain age, DNS/MX records, SSL certificates, and technology stack for maturity signals",
+      "file": "company_maturity.py",
+      "input_fields": ["url", "url_checked", "website", "domain"],
+      "output_fields": ["domain_age_days", "has_mx_records", "tech_stack", "has_ssl", "ssl_issuer", "ssl_expiry_days", "maturity_score"],
+      "order": 3
+    },
+    {
+      "id": "contactability",
+      "name": "Contactability Check",
+      "description": "Extracts emails, phone numbers, social media links, and contact page presence",
+      "file": "contactability.py",
+      "input_fields": ["url", "url_checked", "website", "domain"],
+      "output_fields": ["emails", "phones", "social_links", "contact_page_url", "has_contact_page", "contactability_score"],
+      "order": 4
     }
   ]
 }
