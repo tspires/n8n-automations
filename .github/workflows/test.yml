@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'snippets/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install requests
+
+      - name: Run tests
+        run: pytest --cov=snippets --cov-report=term-missing
+
+      - name: Check test coverage
+        run: |
+          coverage report --fail-under=70
