@@ -7,6 +7,7 @@
       "file": "url_health_check.py",
       "input_fields": ["url", "website", "company_url", "domain"],
       "output_fields": ["url_valid", "url_status_code", "url_error", "url_checked"],
+      "pass_field": "url_valid",
       "order": 1
     },
     {
@@ -16,6 +17,7 @@
       "file": "business_legitimacy.py",
       "input_fields": ["url", "url_checked", "website", "domain"],
       "output_fields": ["is_real_business", "legitimacy_score", "red_flags", "content_length", "word_count"],
+      "pass_field": "is_real_business",
       "order": 2
     },
     {
@@ -24,7 +26,8 @@
       "description": "Analyzes domain age, DNS/MX records, SSL certificates, and technology stack for maturity signals",
       "file": "company_maturity.py",
       "input_fields": ["url", "url_checked", "website", "domain"],
-      "output_fields": ["domain_age_days", "has_mx_records", "tech_stack", "has_ssl", "ssl_issuer", "ssl_expiry_days", "maturity_score"],
+      "output_fields": ["domain_age_days", "has_mx_records", "tech_stack", "has_ssl", "ssl_issuer", "ssl_expiry_days", "maturity_score", "maturity_passed"],
+      "pass_field": "maturity_passed",
       "order": 3
     },
     {
@@ -33,8 +36,19 @@
       "description": "Extracts emails, phone numbers, social media links, and contact page presence",
       "file": "contactability.py",
       "input_fields": ["url", "url_checked", "website", "domain"],
-      "output_fields": ["emails", "phones", "social_links", "contact_page_url", "has_contact_page", "contactability_score"],
+      "output_fields": ["emails", "phones", "social_links", "contact_page_url", "has_contact_page", "contactability_score", "contactability_passed"],
+      "pass_field": "contactability_passed",
       "order": 4
+    },
+    {
+      "id": "site_seo_check",
+      "name": "Site SEO Check",
+      "description": "Analyzes on-page SEO factors, meta tags, performance, and crawlability signals",
+      "file": "site_seo_check.py",
+      "input_fields": ["url", "url_checked", "website", "domain"],
+      "output_fields": ["seo_score", "seo_passed", "seo_issues", "seo_signals", "seo_meta", "seo_performance"],
+      "pass_field": "seo_passed",
+      "order": 5
     }
   ]
 }

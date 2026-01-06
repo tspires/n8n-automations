@@ -140,6 +140,7 @@ def check_maturity(url: str) -> dict:
         "ssl_issuer": None,
         "ssl_expiry_days": None,
         "maturity_score": 0,
+        "maturity_passed": False,
     }
 
     if not url:
@@ -217,6 +218,7 @@ def check_maturity(url: str) -> dict:
         score += 10
 
     result["maturity_score"] = min(100, score)
+    result["maturity_passed"] = result["maturity_score"] >= 40 and result["has_ssl"]
 
     return result
 

@@ -142,6 +142,7 @@ def check_contactability(url: str) -> dict:
         "contact_page_url": None,
         "has_contact_page": False,
         "contactability_score": 0,
+        "contactability_passed": False,
     }
 
     if not url:
@@ -218,6 +219,7 @@ def check_contactability(url: str) -> dict:
         score += 10
 
     result["contactability_score"] = min(100, score)
+    result["contactability_passed"] = bool(result["emails"]) or bool(result["phones"])
 
     return result
 
