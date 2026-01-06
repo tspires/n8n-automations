@@ -1,0 +1,40 @@
+name: Deploy to n8n
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'snippets/**'
+      - 'deploy.py'
+  workflow_dispatch:
+    inputs:
+      snippet:
+        description: 'Specific snippet to deploy (leave empty for all)'
+        required: false
+        default: ''
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Deploy snippets
+        env:
+          N8N_HOST: ${{ secrets.N8N_HOST }}
+          N8N_API_KEY: ${{ secrets.N8N_API_KEY }}
+        run: |
+          if [ -n "${{ github.event.inputs.snippet }}" ]; then
+            python deploy.py --snippet "${{ github.event.inputs.snippet }}"
+          else
+            python deploy.py
+          fi

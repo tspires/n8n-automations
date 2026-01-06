@@ -1,0 +1,12 @@
+{
+  "snippets": [
+    {
+      "id": "url_health_check",
+      "name": "URL Health Check",
+      "description": "Quick validation to filter out low-quality company prospects by checking if their website is accessible",
+      "file": "url_health_check.py",
+      "input_fields": ["url", "website", "company_url", "domain"],
+      "output_fields": ["url_valid", "url_status_code", "url_error", "url_checked"]
+    }
+  ]
+}
