@@ -26,6 +26,8 @@ import requests
 
 SNIPPETS_DIR = Path(__file__).parent / "snippets"
 REGISTRY_FILE = SNIPPETS_DIR / "snippet_registry.json"
+N8N_CODE_NODE_TYPE = "n8n-nodes-base.code"
+API_TIMEOUT = 30
 
 
 def load_registry() -> dict:
@@ -41,8 +43,8 @@ def load_snippet(filename: str) -> str:
         return f.read()
 
 
-def get_n8n_client():
-    """Create an n8n API client."""
+def get_n8n_client() -> dict:
+    """Create an n8n API client configuration."""
     host = os.environ.get("N8N_HOST")
     api_key = os.environ.get("N8N_API_KEY")
 
@@ -59,7 +61,7 @@ def get_n8n_client():
 def list_workflows(client: dict) -> list:
     """List all workflows from n8n."""
     url = f"{client['base_url']}/api/v1/workflows"
-    response = requests.get(url, headers=client["headers"])
+    response = requests.get(url, headers=client["headers"], timeout=API_TIMEOUT)
     response.raise_for_status()
     return response.json().get("data", [])
 
@@ -67,7 +69,7 @@ def list_workflows(client: dict) -> list:
 def get_workflow(client: dict, workflow_id: str) -> dict:
     """Get a specific workflow."""
     url = f"{client['base_url']}/api/v1/workflows/{workflow_id}"
-    response = requests.get(url, headers=client["headers"])
+    response = requests.get(url, headers=client["headers"], timeout=API_TIMEOUT)
     response.raise_for_status()
     return response.json()
 
@@ -75,7 +77,7 @@ def get_workflow(client: dict, workflow_id: str) -> dict:
 def update_workflow(client: dict, workflow_id: str, workflow: dict) -> dict:
     """Update a workflow."""
     url = f"{client['base_url']}/api/v1/workflows/{workflow_id}"
-    response = requests.put(url, headers=client["headers"], json=workflow)
+    response = requests.put(url, headers=client["headers"], json=workflow, timeout=API_TIMEOUT)
     response.raise_for_status()
     return response.json()
 
@@ -84,7 +86,7 @@ def find_python_nodes_with_snippet(workflow: dict, snippet_id: str) -> list:
     """Find Python Code nodes that reference a snippet."""
     matching_nodes = []
     for node in workflow.get("nodes", []):
-        if node.get("type") == "n8n-nodes-base.code":
+        if node.get("type") == N8N_CODE_NODE_TYPE:
             params = node.get("parameters", {})
             # Check if node has a snippet marker in the code
             code = params.get("jsCode", "") or params.get("pythonCode", "")

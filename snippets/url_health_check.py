@@ -8,7 +8,6 @@ Output: Adds 'url_valid', 'url_status_code', and 'url_error' fields
 """
 
 import requests
-from urllib.parse import urlparse
 
 def check_url(url: str, timeout: int = 5) -> dict:
     """
@@ -30,14 +29,13 @@ def check_url(url: str, timeout: int = 5) -> dict:
     if not url.startswith(('http://', 'https://')):
         url = f"https://{url}"
 
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; ProspectValidator/1.0)"}
+
     try:
-        # HEAD request is faster than GET - just checks if server responds
-        response = requests.head(
-            url,
-            timeout=timeout,
-            allow_redirects=True,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; ProspectValidator/1.0)"}
-        )
+        # HEAD is faster, but some servers block it - fallback to GET
+        response = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
+        if response.status_code == 405:  # Method Not Allowed
+            response = requests.get(url, timeout=timeout, allow_redirects=True, headers=headers)
         result["url_status_code"] = response.status_code
         result["url_valid"] = response.status_code < 400
 
